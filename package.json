@@ -1,0 +1,23 @@
+{
+  "name": "hercommerce",
+  "version": "1.0.0",
+  "description": "Smart Home Business Support System - A digital platform to help women running small home businesses",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "client": "npm run dev --prefix client",
+    "server": "npm run dev --prefix server",
+    "install-all": "npm install && npm install --prefix client && npm install --prefix server",
+    "build": "npm run build --prefix client"
+  },
+  "keywords": [
+    "home-business",
+    "women-entrepreneurs",
+    "e-commerce",
+    "small-business"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
