@@ -159,11 +159,15 @@ exports.getTopCustomers = async (req, res) => {
 // Get top products
 exports.getTopProducts = async (req, res) => {
   try {
-    const topProducts = await Product.find({ isActive: true })
-      .sort({ totalSold: -1 })
-      .limit(5)
-      .select('name category totalSold price');
-    
+    const topProducts = await Order.aggregate([
+      { $group: { _id: '$productId', totalSold: { $sum: '$quantity' }, totalRevenue: { $sum: '$totalPrice' } } },
+      { $sort: { totalSold: -1 } },
+      { $limit: 5 },
+      { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product' } },
+      { $unwind: { path: '$product', preserveNullAndEmptyArrays: true } },
+      { $project: { name: '$product.name', category: '$product.category', price: '$product.price', totalSold: 1, totalRevenue: 1 } }
+    ]);
+
     res.json({ success: true, data: topProducts });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

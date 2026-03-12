@@ -112,7 +112,7 @@ export default function AITools() {
 
     try {
       const response = await aiService.chat(userMessage)
-      setChatMessages(prev => [...prev, { role: 'assistant', content: response.data?.reply || response.data?.data?.reply || 'No response received.' }])
+      setChatMessages(prev => [...prev, { role: 'assistant', content: response.data?.reply || response.data?.message || response.data?.data?.message || 'No response received.' }])
     } catch (error) {
       setChatMessages(prev => [...prev, { role: 'assistant', content: `Sorry, I couldn't process your request. ${error.response?.data?.message || error.message || 'Please try again later.'}` }])
     } finally {

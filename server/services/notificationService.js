@@ -54,15 +54,15 @@ exports.templates = {
 
 // Send notification based on customer preference
 exports.notify = async (customer, template, data) => {
-  const notification = this.templates[template](data);
+  const notification = exports.templates[template](data);
   
   switch (customer.preferredContact) {
     case 'whatsapp':
-      return this.sendWhatsApp(customer.phone, notification.message);
+      return exports.sendWhatsApp(customer.phone, notification.message);
     case 'email':
-      return this.sendEmail(customer.email, notification.subject, notification.message);
+      return exports.sendEmail(customer.email, notification.subject, notification.message);
     case 'phone':
     default:
-      return this.sendSMS(customer.phone, notification.message);
+      return exports.sendSMS(customer.phone, notification.message);
   }
 };

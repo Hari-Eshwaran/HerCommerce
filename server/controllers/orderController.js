@@ -81,6 +81,12 @@ exports.create = async (req, res) => {
     });
     
     await order.save();
+
+    // Decrement product stock
+    await Product.findByIdAndUpdate(productId, { $inc: { stock: -quantity } });
+
+    // Increment customer totalOrders
+    await Customer.findByIdAndUpdate(customerId, { $inc: { totalOrders: 1 } });
     
     // Populate and return
     await order.populate('customerId', 'name phone');
@@ -128,7 +134,25 @@ exports.updateStatus = async (req, res) => {
         message: 'Status must be Pending, Ready, or Delivered' 
       });
     }
-    
+
+    const existing = await Order.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // When order is first marked Delivered, add totalPrice to customer totalSpent
+    if (status === 'Delivered' && existing.status !== 'Delivered') {
+      await Customer.findByIdAndUpdate(existing.customerId, {
+        $inc: { totalSpent: existing.totalPrice }
+      });
+    }
+    // If reverting from Delivered, subtract from totalSpent
+    if (status !== 'Delivered' && existing.status === 'Delivered') {
+      await Customer.findByIdAndUpdate(existing.customerId, {
+        $inc: { totalSpent: -existing.totalPrice }
+      });
+    }
+
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       { status },
@@ -136,10 +160,6 @@ exports.updateStatus = async (req, res) => {
     )
       .populate('customerId', 'name phone')
       .populate('productId', 'name price');
-    
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
     
     res.json({ success: true, data: order });
   } catch (error) {
@@ -150,11 +170,24 @@ exports.updateStatus = async (req, res) => {
 // Delete order
 exports.delete = async (req, res) => {
   try {
-    const order = await Order.findByIdAndDelete(req.params.id);
-    
+    const order = await Order.findById(req.params.id);
+
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
+
+    // Restore product stock
+    await Product.findByIdAndUpdate(order.productId, { $inc: { stock: order.quantity } });
+
+    // Decrement customer totalOrders
+    await Customer.findByIdAndUpdate(order.customerId, { $inc: { totalOrders: -1 } });
+
+    // If order was Delivered, subtract from customer totalSpent
+    if (order.status === 'Delivered') {
+      await Customer.findByIdAndUpdate(order.customerId, { $inc: { totalSpent: -order.totalPrice } });
+    }
+
+    await order.deleteOne();
     
     res.json({ success: true, message: 'Order deleted successfully' });
   } catch (error) {

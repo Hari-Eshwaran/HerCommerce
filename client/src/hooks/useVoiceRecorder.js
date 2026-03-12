@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 /**
  * Custom hook for voice recording using Web Speech API
@@ -10,15 +10,17 @@ export function useVoiceRecorder(language = 'ta-IN') {
   const [error, setError] = useState(null);
   const [isSupported, setIsSupported] = useState(true);
 
-  // Check if Web Speech API is supported
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  
-  if (!SpeechRecognition) {
-    if (isSupported) {
+  // Check Web Speech API support once on mount
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
       setIsSupported(false);
       setError('Speech recognition is not supported in this browser');
     }
-  }
+  }, []);
+
+  // Check if Web Speech API is supported
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   const startListening = useCallback(() => {
     if (!SpeechRecognition) {

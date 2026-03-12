@@ -1,5 +1,5 @@
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
 import { 
-  Search, 
   Bell, 
   Menu, 
   Moon, 
@@ -25,6 +24,7 @@ import { useTheme } from '@/App'
 export function Navbar({ onMenuClick }) {
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
+  const [hasNotifications] = useState(false)
 
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 bg-background border-b">
@@ -38,18 +38,6 @@ export function Navbar({ onMenuClick }) {
         >
           <Menu className="w-5 h-5" />
         </Button>
-
-        {/* Search */}
-        <div className="hidden md:flex items-center">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search..."
-              className="w-64 pl-9"
-            />
-          </div>
-        </div>
       </div>
 
       {/* Right section */}
@@ -68,7 +56,9 @@ export function Navbar({ onMenuClick }) {
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+          {hasNotifications && (
+            <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+          )}
         </Button>
 
         {/* User Menu */}
