@@ -112,14 +112,9 @@ export default function AITools() {
 
     try {
       const response = await aiService.chat(userMessage)
-      setChatMessages(prev => [...prev, { role: 'assistant', content: response.data.reply }])
+      setChatMessages(prev => [...prev, { role: 'assistant', content: response.data?.reply || response.data?.data?.reply || 'No response received.' }])
     } catch (error) {
-      const demoReplies = [
-        "Great question! Based on your business type, I'd recommend focusing on building a strong local presence first. Consider joining local women's business groups and collaborating with complementary businesses.",
-        "To increase your profit margins, try these strategies: 1) Bundle products together, 2) Offer premium customization options, 3) Create loyalty programs for repeat customers.",
-        "For managing orders better, I suggest: maintaining a simple order tracker, setting clear delivery timelines with customers, and batch-processing similar orders to save time.",
-      ]
-      setChatMessages(prev => [...prev, { role: 'assistant', content: demoReplies[Math.floor(Math.random() * demoReplies.length)] }])
+      setChatMessages(prev => [...prev, { role: 'assistant', content: `Sorry, I couldn't process your request. ${error.response?.data?.message || error.message || 'Please try again later.'}` }])
     } finally {
       setLoading(false)
     }
@@ -129,11 +124,42 @@ export default function AITools() {
   const toggleRecording = () => {
     if (isRecording) {
       setIsRecording(false)
-      // Demo transcript
-      setVoiceTranscript("Create order for Priya Sharma, one custom blouse, price 1200 rupees, delivery next Friday")
+      // Use Web Speech API if available
+      if (window.recognition) {
+        window.recognition.stop()
+      }
     } else {
       setIsRecording(true)
       setVoiceTranscript('')
+      
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+        const recognition = new SpeechRecognition()
+        recognition.lang = 'en-IN'
+        recognition.continuous = false
+        recognition.interimResults = false
+        
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript
+          setVoiceTranscript(transcript)
+          setIsRecording(false)
+        }
+        
+        recognition.onerror = () => {
+          setVoiceTranscript('')
+          setIsRecording(false)
+        }
+        
+        recognition.onend = () => {
+          setIsRecording(false)
+        }
+        
+        window.recognition = recognition
+        recognition.start()
+      } else {
+        setVoiceTranscript('Speech recognition is not supported in this browser.')
+        setIsRecording(false)
+      }
     }
   }
 
@@ -149,28 +175,37 @@ export default function AITools() {
   }
 
   const handlePhotoAnalyze = async () => {
+    if (!selectedImage) return
     setLoading(true)
-    // Demo result
-    setTimeout(() => {
-      setResult(`## Product Analysis
-
-**Detected Items:**
-- Custom embroidered blouse
-- Traditional design pattern
-- Premium fabric quality
-
-**Suggested Product Details:**
-- Category: Tailoring
-- Estimated Cost: ₹400-500
-- Suggested Price: ₹1,200-1,500
-
-**Auto-generated Description:**
-Beautiful hand-embroidered blouse with traditional motifs. Perfect for festive occasions and celebrations.
-
-**Recommended Tags:**
-#handmade #embroidery #traditional #festive`)
+    setResult('')
+    
+    try {
+      const reader = new FileReader()
+      reader.onloadend = async () => {
+        try {
+          const base64 = reader.result
+          const response = await fetch('/api/ai/product-vision', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64, imageType: 'base64' })
+          })
+          const data = await response.json()
+          if (data.success) {
+            setResult(JSON.stringify(data.product || data, null, 2))
+          } else {
+            setResult(`Analysis failed: ${data.error || data.message || 'Unknown error'}`)
+          }
+        } catch (err) {
+          setResult(`Failed to analyze image: ${err.message}`)
+        } finally {
+          setLoading(false)
+        }
+      }
+      reader.readAsDataURL(selectedImage)
+    } catch (error) {
+      setResult(`Error: ${error.message}`)
       setLoading(false)
-    }, 2000)
+    }
   }
 
   // Tool action handler
@@ -178,97 +213,31 @@ Beautiful hand-embroidered blouse with traditional motifs. Perfect for festive o
     setLoading(true)
     setResult('')
 
-    setTimeout(() => {
+    try {
+      let response
       switch (selectedTool) {
         case 'pricing':
-          setResult(generatePricingResult(pricingInput))
+          response = await aiService.getPricingSuggestion(pricingInput)
+          setResult(response.data?.suggestion || JSON.stringify(response.data, null, 2))
           break
         case 'description':
-          setResult(generateDescriptionResult(descriptionInput))
+          response = await aiService.generateDescription(descriptionInput)
+          setResult(response.data?.description || JSON.stringify(response.data, null, 2))
           break
         case 'marketing':
-          setResult(generateMarketingResult(marketingInput))
+          response = await aiService.getMarketingIdeas(marketingInput)
+          setResult(response.data?.ideas || JSON.stringify(response.data, null, 2))
           break
         case 'demand':
-          setResult(generateDemandResult())
+          response = await aiService.getDemandForecast({})
+          setResult(response.data?.forecast || JSON.stringify(response.data, null, 2))
           break
       }
+    } catch (error) {
+      setResult(`Failed to get AI response: ${error.response?.data?.message || error.message || 'Please try again.'}`)
+    } finally {
       setLoading(false)
-    }, 1500)
-  }
-
-  // Result generators
-  const generatePricingResult = (input) => {
-    const cost = parseFloat(input.cost) || 100
-    const margin = parseFloat(input.targetMargin) || 30
-    const suggestedPrice = Math.round(cost / (1 - margin / 100))
-    
-    return `## Pricing Analysis for ${input.productName || 'Your Product'}
-
-**Cost:** ₹${cost}  |  **Target Margin:** ${margin}%
-
-### Recommended Prices:
-
-| Strategy | Price | Profit | Margin |
-|----------|-------|--------|--------|
-| Budget | ₹${Math.round(cost * 1.3)} | ₹${Math.round(cost * 0.3)} | 23% |
-| **Standard** | **₹${suggestedPrice}** | **₹${suggestedPrice - cost}** | **${margin}%** |
-| Premium | ₹${Math.round(suggestedPrice * 1.2)} | ₹${Math.round(suggestedPrice * 1.2 - cost)} | ${Math.round((1 - cost/(suggestedPrice * 1.2)) * 100)}% |
-
-**Tips:** Start with standard pricing, offer premium for rush orders.`
-  }
-
-  const generateDescriptionResult = (input) => {
-    return `## Generated Descriptions for ${input.productName || 'Your Product'}
-
-### English:
-Discover the perfect ${input.productName || 'handcrafted item'} made with love. Each piece is unique, created to bring joy to your home!
-
-### WhatsApp Message:
-🌟 *New Arrival!* 🌟
-${input.productName || 'Beautiful Product'}
-✨ Handcrafted with love
-💝 Perfect for gifting
-📦 Home delivery available
-💬 DM to order!
-
-### Instagram Caption:
-✨ Introducing our latest creation! ✨
-${input.productName || 'This beautiful piece'} is handcrafted with attention to every detail.
-#handmade #homemade #supportlocal`
-  }
-
-  const generateMarketingResult = (input) => {
-    return `## Marketing Ideas for ${input.businessType || 'Your Business'}
-
-### ${input.platform === 'whatsapp' ? 'WhatsApp' : input.platform === 'instagram' ? 'Instagram' : 'Local'} Strategy
-
-**Quick Wins:**
-1. Post 3-4 status updates daily showing your work
-2. Share customer testimonials
-3. Behind-the-scenes content
-
-**Promotion Ideas:**
-- 🎁 "Refer a friend" - 10% off for both
-- 🎂 Birthday month specials
-- 🎊 Festival season bundles`
-  }
-
-  const generateDemandResult = () => {
-    return `## Demand Forecast
-
-### Next 3 Months:
-
-| Month | Orders | Trend |
-|-------|--------|-------|
-| This Month | 35-40 | 📈 +15% |
-| Next Month | 45-55 | 📈 +30% |
-| Month After | 30-35 | 📉 -10% |
-
-### Recommendations:
-1. Stock up on materials for top items
-2. Consider temporary help for peak season
-3. Promote advance bookings`
+    }
   }
 
   const renderToolContent = () => {
@@ -453,18 +422,44 @@ ${input.productName || 'This beautiful piece'} is handcrafted with attention to 
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm">{voiceTranscript}</p>
-                    <div className="mt-4 p-3 bg-background rounded-lg border">
-                      <p className="text-xs text-muted-foreground mb-2">Extracted Order:</p>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div><strong>Customer:</strong> Priya Sharma</div>
-                        <div><strong>Product:</strong> Custom Blouse</div>
-                        <div><strong>Price:</strong> ₹1,200</div>
-                        <div><strong>Delivery:</strong> Next Friday</div>
-                      </div>
-                    </div>
-                    <Button className="w-full mt-4">
-                      Create Order
+                    <Button 
+                      className="w-full mt-4"
+                      onClick={async () => {
+                        setLoading(true)
+                        try {
+                          const response = await fetch('/api/ai/voice-order', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ text: voiceTranscript })
+                          })
+                          const data = await response.json()
+                          if (data.success) {
+                            setResult(JSON.stringify(data.orderDetails || data, null, 2))
+                          } else {
+                            setResult(`Failed: ${data.error || data.message}`)
+                          }
+                        } catch (err) {
+                          setResult(`Error processing voice order: ${err.message}`)
+                        } finally {
+                          setLoading(false)
+                        }
+                      }}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        'Process Voice Order'
+                      )}
                     </Button>
+                    {result && (
+                      <div className="mt-4 p-3 bg-background rounded-lg border">
+                        <pre className="whitespace-pre-wrap text-sm">{result}</pre>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}

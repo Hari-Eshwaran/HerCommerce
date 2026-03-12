@@ -15,6 +15,21 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Price is required'],
     min: [0, 'Price cannot be negative']
   },
+  cost: {
+    type: Number,
+    default: 0,
+    min: [0, 'Cost cannot be negative']
+  },
+  stock: {
+    type: Number,
+    default: 0,
+    min: [0, 'Stock cannot be negative']
+  },
+  unit: {
+    type: String,
+    default: 'piece',
+    enum: ['piece', 'set', 'kg', 'g', 'jar', 'box', 'service']
+  },
   image: {
     type: String,
     default: ''
@@ -24,10 +39,13 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Category is required'],
     enum: ['Tailoring', 'Baking', 'Handicrafts', 'Homemade Food', 'Beauty Services']
   },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: [true, 'User ID is required']
+    ref: 'User'
   }
 }, {
   timestamps: true

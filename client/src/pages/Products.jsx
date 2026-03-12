@@ -83,17 +83,10 @@ export default function Products() {
   const loadProducts = async () => {
     try {
       const response = await productService.getAll()
-      setProducts(response.data)
+      setProducts(response.data?.data || response.data || [])
     } catch (error) {
-      // Demo data
-      setProducts([
-        { _id: '1', name: 'Custom Blouse', description: 'Hand-stitched custom blouse', price: 1200, cost: 400, category: 'Tailoring', stock: 5, unit: 'piece' },
-        { _id: '2', name: 'Birthday Cake', description: 'Custom decorated birthday cake', price: 800, cost: 300, category: 'Baking', stock: 0, unit: 'piece' },
-        { _id: '3', name: 'Handmade Jewelry Set', description: 'Traditional handmade jewelry', price: 450, cost: 150, category: 'Handicrafts', stock: 12, unit: 'set' },
-        { _id: '4', name: 'Homemade Pickle (500g)', description: 'Traditional homemade pickle', price: 200, cost: 80, category: 'Homemade Food', stock: 20, unit: 'jar' },
-        { _id: '5', name: 'Bridal Mehendi', description: 'Full bridal mehendi service', price: 2500, cost: 200, category: 'Beauty Services', stock: 99, unit: 'service' },
-        { _id: '6', name: 'Salwar Suit', description: 'Custom stitched salwar suit', price: 2000, cost: 700, category: 'Tailoring', stock: 3, unit: 'piece' },
-      ])
+      console.error('Failed to load products:', error.message)
+      setProducts([])
     } finally {
       setLoading(false)
     }

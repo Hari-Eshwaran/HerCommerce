@@ -55,15 +55,10 @@ export default function Customers() {
   const loadCustomers = async () => {
     try {
       const response = await customerService.getAll()
-      setCustomers(response.data)
+      setCustomers(response.data?.data || response.data || [])
     } catch (error) {
-      // Demo data if API not available
-      setCustomers([
-        { _id: '1', name: 'Priya Sharma', email: 'priya@email.com', phone: '9876543210', address: 'Mumbai', totalOrders: 5, totalSpent: 6500 },
-        { _id: '2', name: 'Anita Kumar', email: 'anita@email.com', phone: '9876543211', address: 'Delhi', totalOrders: 3, totalSpent: 2400 },
-        { _id: '3', name: 'Meera Patel', email: 'meera@email.com', phone: '9876543212', address: 'Bangalore', totalOrders: 8, totalSpent: 12000 },
-        { _id: '4', name: 'Kavita Singh', email: 'kavita@email.com', phone: '9876543213', address: 'Chennai', totalOrders: 2, totalSpent: 1800 },
-      ])
+      console.error('Failed to load customers:', error.message)
+      setCustomers([])
     } finally {
       setLoading(false)
     }

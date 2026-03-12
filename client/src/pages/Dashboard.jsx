@@ -65,34 +65,29 @@ export default function Dashboard() {
   const loadDashboardData = async () => {
     try {
       const statsResponse = await api.get('/dashboard/stats')
-      if (statsResponse.data) {
-        setStats(statsResponse.data)
+      if (statsResponse.data?.success) {
+        setStats(statsResponse.data.data)
       }
     } catch (error) {
-      setStats({
-        totalCustomers: 156,
-        totalOrders: 342,
-        totalProducts: 48,
-        totalRevenue: 28500
-      })
+      console.error('Failed to load stats:', error.message)
     }
 
     try {
       const overviewResponse = await api.get('/dashboard/overview')
-      if (overviewResponse.data.success) {
+      if (overviewResponse.data?.success) {
         setOverview(overviewResponse.data.data)
       }
     } catch (error) {
-      console.log('Overview not available')
+      console.error('Overview not available:', error.message)
     }
 
     try {
       const predictionResponse = await api.get('/dashboard/prediction')
-      if (predictionResponse.data.success) {
+      if (predictionResponse.data?.success) {
         setPrediction(predictionResponse.data.data)
       }
     } catch (error) {
-      console.log('Prediction not available')
+      console.error('Prediction not available:', error.message)
     }
 
     setLoading(false)
@@ -112,11 +107,11 @@ export default function Dashboard() {
       }
     ]
   } : {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    labels: [],
     datasets: [
       {
         label: 'Orders',
-        data: [40, 30, 50, 45, 60, 55],
+        data: [],
         borderColor: 'hsl(var(--primary))',
         backgroundColor: 'hsl(var(--primary) / 0.1)',
         fill: true,
@@ -136,11 +131,11 @@ export default function Dashboard() {
       }
     ]
   } : {
-    labels: ['Tailoring', 'Baking', 'Handicrafts', 'Food', 'Beauty'],
+    labels: [],
     datasets: [
       {
         label: 'Revenue',
-        data: [35000, 25000, 20000, 15000, 5000],
+        data: [],
         backgroundColor: 'hsl(var(--primary) / 0.8)',
         borderRadius: 4
       }
@@ -165,25 +160,25 @@ export default function Dashboard() {
   const statCards = [
     { 
       title: 'Monthly Orders', 
-      value: overview?.monthlyOrders || stats.totalOrders, 
+      value: overview?.monthlyOrders ?? stats.totalOrders ?? 0, 
       icon: ShoppingBag, 
-      change: prediction?.prediction?.trendPercentage ? `${prediction.prediction.trendPercentage > 0 ? '+' : ''}${prediction.prediction.trendPercentage}%` : '+8%',
+      change: prediction?.prediction?.trendPercentage ? `${prediction.prediction.trendPercentage > 0 ? '+' : ''}${prediction.prediction.trendPercentage}%` : '—',
       positive: prediction?.prediction?.trendPercentage >= 0,
       iconBg: 'bg-green-500/10',
       iconColor: 'text-green-500'
     },
     { 
       title: 'Monthly Revenue', 
-      value: `₹${(overview?.monthlyRevenue || stats.totalRevenue).toLocaleString()}`, 
+      value: `₹${(overview?.monthlyRevenue ?? stats.totalRevenue ?? 0).toLocaleString()}`, 
       icon: DollarSign, 
-      change: '+15%',
+      change: '—',
       positive: true,
       iconBg: 'bg-blue-500/10',
       iconColor: 'text-blue-500'
     },
     { 
       title: 'Pending Deliveries', 
-      value: overview?.pendingDeliveries || 12, 
+      value: overview?.pendingDeliveries ?? 0, 
       icon: Clock, 
       change: 'Active',
       positive: true,
@@ -192,27 +187,13 @@ export default function Dashboard() {
     },
     { 
       title: 'Total Customers', 
-      value: stats.totalCustomers, 
+      value: stats.totalCustomers ?? 0, 
       icon: Users, 
-      change: '+12%',
+      change: '—',
       positive: true,
       iconBg: 'bg-purple-500/10',
       iconColor: 'text-purple-500'
     },
-  ]
-
-  const demoProducts = [
-    { name: 'Custom Blouse', sold: 45, revenue: 54000 },
-    { name: 'Birthday Cake', sold: 32, revenue: 25600 },
-    { name: 'Handmade Jewelry', sold: 28, revenue: 12600 },
-    { name: 'Saree Stitching', sold: 22, revenue: 33000 },
-    { name: 'Homemade Pickles', sold: 18, revenue: 5400 }
-  ]
-
-  const demoOrders = [
-    { customer: 'Priya Sharma', product: 'Custom Blouse', amount: 1200, status: 'Delivered' },
-    { customer: 'Anita Kumar', product: 'Birthday Cake', amount: 800, status: 'Ready' },
-    { customer: 'Meera Patel', product: 'Handmade Jewelry', amount: 450, status: 'Pending' }
   ]
 
   const getStatusVariant = (status) => {
@@ -288,7 +269,7 @@ export default function Dashboard() {
       </div>
 
       {/* AI Sales Prediction */}
-      {prediction && (
+      {prediction?.prediction && (
         <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -303,10 +284,10 @@ export default function Dashboard() {
                 <CardContent className="pt-6">
                   <p className="text-sm text-muted-foreground">Predicted Orders (Next Week)</p>
                   <p className="text-3xl font-bold text-primary mt-1">
-                    {prediction.prediction.predictedOrdersNextWeek}
+                    {prediction.prediction.predictedOrdersNextWeek ?? 0}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Confidence: {prediction.prediction.confidence}%
+                    Confidence: {prediction.prediction.confidence ?? 0}%
                   </p>
                 </CardContent>
               </Card>
@@ -314,7 +295,7 @@ export default function Dashboard() {
                 <CardContent className="pt-6">
                   <p className="text-sm text-muted-foreground">Expected Revenue</p>
                   <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">
-                    ₹{prediction.prediction.expectedRevenue.toLocaleString()}
+                    ₹{(prediction.prediction.expectedRevenue ?? 0).toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Based on avg order value
@@ -336,11 +317,11 @@ export default function Dashboard() {
                       prediction.prediction.trend === 'increasing' ? 'text-green-600 dark:text-green-400' :
                       prediction.prediction.trend === 'decreasing' ? 'text-red-600 dark:text-red-400' : 'text-foreground'
                     }`}>
-                      {prediction.prediction.trend.charAt(0).toUpperCase() + prediction.prediction.trend.slice(1)}
+                      {(prediction.prediction.trend || 'stable').charAt(0).toUpperCase() + (prediction.prediction.trend || 'stable').slice(1)}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {prediction.prediction.trendPercentage > 0 ? '+' : ''}{prediction.prediction.trendPercentage}% vs last period
+                    {(prediction.prediction.trendPercentage ?? 0) > 0 ? '+' : ''}{prediction.prediction.trendPercentage ?? 0}% vs last period
                   </p>
                 </CardContent>
               </Card>
@@ -359,22 +340,29 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {(overview?.topProducts?.length > 0 ? overview.topProducts : demoProducts).map((product, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold text-sm">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="font-medium">{product.name || 'Unknown Product'}</p>
-                      <p className="text-sm text-muted-foreground">{product.totalQuantity || product.sold} sold</p>
+              {overview?.topProducts?.length > 0 ? (
+                overview.topProducts.map((product, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold text-sm">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p className="font-medium">{product.name || 'Unknown Product'}</p>
+                        <p className="text-sm text-muted-foreground">{product.totalQuantity || 0} sold</p>
+                      </div>
                     </div>
+                    <p className="font-semibold text-green-600 dark:text-green-400">
+                      ₹{(product.totalRevenue || 0).toLocaleString()}
+                    </p>
                   </div>
-                  <p className="font-semibold text-green-600 dark:text-green-400">
-                    ₹{(product.totalRevenue || product.revenue)?.toLocaleString()}
-                  </p>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <Package className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">No product data yet</p>
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -386,32 +374,39 @@ export default function Dashboard() {
             <CardDescription>Latest customer orders</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(overview?.recentOrders?.length > 0 ? overview.recentOrders : demoOrders).map((order, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">
-                      {order.customerId?.name || order.customer}
-                    </TableCell>
-                    <TableCell>{order.productId?.name || order.product}</TableCell>
-                    <TableCell>₹{(order.totalPrice || order.amount)?.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(order.status)}>
-                        {order.status}
-                      </Badge>
-                    </TableCell>
+            {overview?.recentOrders?.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {overview.recentOrders.map((order, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">
+                        {order.customerId?.name || order.customer?.name || '—'}
+                      </TableCell>
+                      <TableCell>{order.productId?.name || order.items?.[0]?.product?.name || '—'}</TableCell>
+                      <TableCell>₹{(order.totalPrice || order.total || 0).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(order.status)}>
+                          {order.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8">
+                <ShoppingBag className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">No recent orders</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

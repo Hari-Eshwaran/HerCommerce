@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import {
   Select,
@@ -41,10 +40,9 @@ import {
 import { orderService, customerService, productService } from '../services/api'
 
 const statusOptions = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'in-progress', label: 'In Progress' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' }
+  { value: 'Pending', label: 'Pending' },
+  { value: 'Ready', label: 'Ready' },
+  { value: 'Delivered', label: 'Delivered' }
 ]
 
 export default function Orders() {
@@ -57,10 +55,11 @@ export default function Orders() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [editingOrder, setEditingOrder] = useState(null)
   const [formData, setFormData] = useState({
-    customer: '',
-    items: [{ product: '', quantity: 1, price: 0 }],
-    status: 'pending',
-    notes: '',
+    customerId: '',
+    productId: '',
+    quantity: 1,
+    totalPrice: 0,
+    status: 'Pending',
     deliveryDate: ''
   })
 
@@ -75,29 +74,14 @@ export default function Orders() {
         customerService.getAll(),
         productService.getAll()
       ])
-      setOrders(ordersRes.data)
-      setCustomers(customersRes.data)
-      setProducts(productsRes.data)
+      setOrders(ordersRes.data?.data || ordersRes.data || [])
+      setCustomers(customersRes.data?.data || customersRes.data || [])
+      setProducts(productsRes.data?.data || productsRes.data || [])
     } catch (error) {
-      // Demo data
-      setOrders([
-        { _id: '1', orderNumber: 'ORD-001', customer: { name: 'Priya Sharma' }, items: [{ product: { name: 'Custom Blouse' }, quantity: 1, price: 1200 }], total: 1200, status: 'completed', createdAt: '2024-01-15' },
-        { _id: '2', orderNumber: 'ORD-002', customer: { name: 'Anita Kumar' }, items: [{ product: { name: 'Birthday Cake' }, quantity: 1, price: 800 }], total: 800, status: 'in-progress', createdAt: '2024-01-16' },
-        { _id: '3', orderNumber: 'ORD-003', customer: { name: 'Meera Patel' }, items: [{ product: { name: 'Handmade Jewelry' }, quantity: 2, price: 225 }], total: 450, status: 'pending', createdAt: '2024-01-17' },
-        { _id: '4', orderNumber: 'ORD-004', customer: { name: 'Kavita Singh' }, items: [{ product: { name: 'Mehendi Service' }, quantity: 1, price: 500 }], total: 500, status: 'pending', createdAt: '2024-01-18' },
-      ])
-      setCustomers([
-        { _id: '1', name: 'Priya Sharma' },
-        { _id: '2', name: 'Anita Kumar' },
-        { _id: '3', name: 'Meera Patel' },
-        { _id: '4', name: 'Kavita Singh' },
-      ])
-      setProducts([
-        { _id: '1', name: 'Custom Blouse', price: 1200 },
-        { _id: '2', name: 'Birthday Cake', price: 800 },
-        { _id: '3', name: 'Handmade Jewelry', price: 225 },
-        { _id: '4', name: 'Mehendi Service', price: 500 },
-      ])
+      console.error('Failed to load data:', error.message)
+      setOrders([])
+      setCustomers([])
+      setProducts([])
     } finally {
       setLoading(false)
     }
@@ -106,8 +90,14 @@ export default function Orders() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const total = formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-      const orderData = { ...formData, total }
+      const orderData = {
+        customerId: formData.customerId,
+        productId: formData.productId,
+        quantity: parseInt(formData.quantity),
+        totalPrice: parseFloat(formData.totalPrice),
+        status: formData.status,
+        deliveryDate: formData.deliveryDate || undefined
+      }
       
       if (editingOrder) {
         await orderService.update(editingOrder._id, orderData)
@@ -135,7 +125,6 @@ export default function Orders() {
   const updateStatus = async (id, status) => {
     try {
       await orderService.updateStatus(id, status)
-      // Update locally for demo
       setOrders(orders.map(o => o._id === id ? { ...o, status } : o))
     } catch (error) {
       console.error('Error updating status:', error)
@@ -146,19 +135,21 @@ export default function Orders() {
     if (order) {
       setEditingOrder(order)
       setFormData({
-        customer: order.customer?._id || '',
-        items: order.items || [{ product: '', quantity: 1, price: 0 }],
-        status: order.status,
-        notes: order.notes || '',
-        deliveryDate: order.deliveryDate || ''
+        customerId: order.customerId?._id || '',
+        productId: order.productId?._id || '',
+        quantity: order.quantity || 1,
+        totalPrice: order.totalPrice || 0,
+        status: order.status || 'Pending',
+        deliveryDate: order.deliveryDate ? new Date(order.deliveryDate).toISOString().split('T')[0] : ''
       })
     } else {
       setEditingOrder(null)
       setFormData({
-        customer: '',
-        items: [{ product: '', quantity: 1, price: 0 }],
-        status: 'pending',
-        notes: '',
+        customerId: '',
+        productId: '',
+        quantity: 1,
+        totalPrice: 0,
+        status: 'Pending',
         deliveryDate: ''
       })
     }
@@ -170,48 +161,20 @@ export default function Orders() {
     setEditingOrder(null)
   }
 
-  const addItem = () => {
-    setFormData({
-      ...formData,
-      items: [...formData.items, { product: '', quantity: 1, price: 0 }]
-    })
-  }
-
-  const removeItem = (index) => {
-    setFormData({
-      ...formData,
-      items: formData.items.filter((_, i) => i !== index)
-    })
-  }
-
-  const updateItem = (index, field, value) => {
-    const newItems = [...formData.items]
-    newItems[index][field] = value
-    
-    if (field === 'product') {
-      const product = products.find(p => p._id === value)
-      if (product) {
-        newItems[index].price = product.price
-      }
-    }
-    
-    setFormData({ ...formData, items: newItems })
-  }
-
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
-      order.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      order._id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customerId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.productId?.name?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus
     return matchesSearch && matchesStatus
   })
 
   const getStatusBadge = (status) => {
     const variants = {
-      pending: 'outline',
-      'in-progress': 'secondary',
-      completed: 'default',
-      cancelled: 'destructive'
+      Pending: 'outline',
+      Ready: 'secondary',
+      Delivered: 'default'
     }
     return (
       <Badge variant={variants[status] || 'outline'}>
@@ -247,8 +210,8 @@ export default function Orders() {
                 <div className="grid gap-2">
                   <Label htmlFor="customer">Customer</Label>
                   <Select 
-                    value={formData.customer} 
-                    onValueChange={(value) => setFormData({ ...formData, customer: value })}
+                    value={formData.customerId} 
+                    onValueChange={(value) => setFormData({ ...formData, customerId: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select customer" />
@@ -264,62 +227,62 @@ export default function Orders() {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label>Order Items</Label>
-                  {formData.items.map((item, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Select 
-                        value={item.product} 
-                        onValueChange={(value) => updateItem(index, 'product', value)}
-                      >
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Select product" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map(product => (
-                            <SelectItem key={product._id} value={product._id}>
-                              {product.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value))}
-                        className="w-20"
-                        min="1"
-                        placeholder="Qty"
-                      />
-                      <Input
-                        type="number"
-                        value={item.price}
-                        onChange={(e) => updateItem(index, 'price', parseInt(e.target.value))}
-                        className="w-24"
-                        placeholder="Price"
-                      />
-                      {formData.items.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeItem(index)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addItem}
-                    className="w-fit"
+                  <Label>Product</Label>
+                  <Select 
+                    value={formData.productId} 
+                    onValueChange={(value) => {
+                      const product = products.find(p => p._id === value)
+                      setFormData({ 
+                        ...formData, 
+                        productId: value,
+                        totalPrice: product ? product.price * formData.quantity : formData.totalPrice
+                      })
+                    }}
                   >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Item
-                  </Button>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map(product => (
+                        <SelectItem key={product._id} value={product._id}>
+                          {product.name} - ₹{product.price}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="quantity">Quantity</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      value={formData.quantity}
+                      onChange={(e) => {
+                        const qty = parseInt(e.target.value) || 1
+                        const product = products.find(p => p._id === formData.productId)
+                        setFormData({ 
+                          ...formData, 
+                          quantity: qty,
+                          totalPrice: product ? product.price * qty : formData.totalPrice
+                        })
+                      }}
+                      min="1"
+                      placeholder="1"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="totalPrice">Total Price (₹)</Label>
+                    <Input
+                      id="totalPrice"
+                      type="number"
+                      value={formData.totalPrice}
+                      onChange={(e) => setFormData({ ...formData, totalPrice: parseFloat(e.target.value) || 0 })}
+                      min="0"
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -352,23 +315,12 @@ export default function Orders() {
                   </div>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    rows={3}
-                    placeholder="Special instructions, measurements, etc."
-                  />
-                </div>
-
                 <Card className="bg-muted/50">
                   <CardContent className="pt-4">
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Order Total</span>
                       <span className="text-2xl font-bold">
-                        ₹{formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString()}
+                        ₹{(formData.totalPrice || 0).toLocaleString()}
                       </span>
                     </div>
                   </CardContent>
@@ -431,9 +383,9 @@ export default function Orders() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Order ID</TableHead>
                 <TableHead>Customer</TableHead>
-                <TableHead>Items</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
@@ -443,13 +395,11 @@ export default function Orders() {
             <TableBody>
               {filteredOrders.map((order) => (
                 <TableRow key={order._id}>
-                  <TableCell className="font-medium">#{order.orderNumber}</TableCell>
-                  <TableCell>{order.customer?.name}</TableCell>
-                  <TableCell className="max-w-[200px] truncate">
-                    {order.items?.map(item => item.product?.name).join(', ')}
-                  </TableCell>
+                  <TableCell className="font-medium">{order.customerId?.name || '—'}</TableCell>
+                  <TableCell>{order.productId?.name || '—'}</TableCell>
+                  <TableCell className="text-right">{order.quantity}</TableCell>
                   <TableCell className="text-right font-semibold">
-                    ₹{order.total?.toLocaleString()}
+                    ₹{(order.totalPrice || 0).toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <Select 
@@ -534,31 +484,31 @@ export default function Orders() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-              {orders.filter(o => o.status === 'pending').length}
+              {orders.filter(o => o.status === 'Pending').length}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              In Progress
+              Ready
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {orders.filter(o => o.status === 'in-progress').length}
+              {orders.filter(o => o.status === 'Ready').length}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Completed
+              Delivered
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {orders.filter(o => o.status === 'completed').length}
+              {orders.filter(o => o.status === 'Delivered').length}
             </div>
           </CardContent>
         </Card>

@@ -6,6 +6,11 @@ const customerSchema = new mongoose.Schema({
     required: [true, 'Customer name is required'],
     trim: true
   },
+  email: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
@@ -19,10 +24,17 @@ const customerSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  totalOrders: {
+    type: Number,
+    default: 0
+  },
+  totalSpent: {
+    type: Number,
+    default: 0
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: [true, 'User ID is required']
+    ref: 'User'
   }
 }, {
   timestamps: true

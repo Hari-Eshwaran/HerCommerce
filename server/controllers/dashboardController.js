@@ -15,8 +15,8 @@ exports.getStats = async (req, res) => {
       Product.countDocuments({ isActive: true }),
       Order.countDocuments(),
       Order.aggregate([
-        { $match: { status: 'completed' } },
-        { $group: { _id: null, totalRevenue: { $sum: '$total' } } }
+        { $match: { status: 'Delivered' } },
+        { $group: { _id: null, totalRevenue: { $sum: '$totalPrice' } } }
       ])
     ]);
     
@@ -61,7 +61,7 @@ exports.getSalesData = async (req, res) => {
       {
         $match: {
           createdAt: { $gte: startDate },
-          status: { $in: ['completed', 'in-progress'] }
+          status: { $in: ['Delivered', 'Ready'] }
         }
       },
       {
@@ -70,7 +70,7 @@ exports.getSalesData = async (req, res) => {
             year: { $year: '$createdAt' },
             month: { $month: '$createdAt' }
           },
-          sales: { $sum: '$total' },
+          sales: { $sum: '$totalPrice' },
           orders: { $sum: 1 }
         }
       },
@@ -95,12 +95,11 @@ exports.getSalesData = async (req, res) => {
 exports.getSalesByCategory = async (req, res) => {
   try {
     const salesByCategory = await Order.aggregate([
-      { $match: { status: 'completed' } },
-      { $unwind: '$items' },
+      { $match: { status: 'Delivered' } },
       {
         $lookup: {
           from: 'products',
-          localField: 'items.product',
+          localField: 'productId',
           foreignField: '_id',
           as: 'productInfo'
         }
@@ -109,8 +108,8 @@ exports.getSalesByCategory = async (req, res) => {
       {
         $group: {
           _id: '$productInfo.category',
-          value: { $sum: '$items.subtotal' },
-          count: { $sum: '$items.quantity' }
+          value: { $sum: '$totalPrice' },
+          count: { $sum: '$quantity' }
         }
       },
       { $sort: { value: -1 } }
@@ -132,8 +131,8 @@ exports.getSalesByCategory = async (req, res) => {
 exports.getRecentOrders = async (req, res) => {
   try {
     const orders = await Order.find()
-      .populate('customer', 'name')
-      .populate('items.product', 'name')
+      .populate('customerId', 'name phone')
+      .populate('productId', 'name price')
       .sort('-createdAt')
       .limit(10);
     
@@ -179,21 +178,21 @@ exports.getTodaySummary = async (req, res) => {
     
     const [todayOrders, pendingOrders, completedToday] = await Promise.all([
       Order.countDocuments({ createdAt: { $gte: today } }),
-      Order.countDocuments({ status: 'pending' }),
+      Order.countDocuments({ status: 'Pending' }),
       Order.countDocuments({ 
-        status: 'completed', 
-        actualCompletionDate: { $gte: today } 
+        status: 'Delivered', 
+        updatedAt: { $gte: today } 
       })
     ]);
     
     const todayRevenue = await Order.aggregate([
       { 
         $match: { 
-          status: 'completed',
-          actualCompletionDate: { $gte: today }
+          status: 'Delivered',
+          updatedAt: { $gte: today }
         } 
       },
-      { $group: { _id: null, total: { $sum: '$total' } } }
+      { $group: { _id: null, total: { $sum: '$totalPrice' } } }
     ]);
     
     res.json({

@@ -45,7 +45,7 @@ exports.getById = async (req, res) => {
 // Create customer
 exports.create = async (req, res) => {
   try {
-    const { name, phone, address, notes, createdBy } = req.body;
+    const { name, email, phone, address, notes, createdBy } = req.body;
     
     // Validate required fields
     if (!name || !phone) {
@@ -57,6 +57,7 @@ exports.create = async (req, res) => {
     
     const customer = new Customer({
       name,
+      email,
       phone,
       address,
       notes,
@@ -74,11 +75,11 @@ exports.create = async (req, res) => {
 // Update customer
 exports.update = async (req, res) => {
   try {
-    const { name, phone, address, notes } = req.body;
+    const { name, email, phone, address, notes } = req.body;
     
     const customer = await Customer.findByIdAndUpdate(
       req.params.id,
-      { name, phone, address, notes },
+      { name, email, phone, address, notes },
       { new: true, runValidators: true }
     );
     

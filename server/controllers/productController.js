@@ -48,7 +48,7 @@ exports.getById = async (req, res) => {
 // Create product
 exports.create = async (req, res) => {
   try {
-    const { name, description, price, image, category, createdBy } = req.body;
+    const { name, description, price, cost, stock, unit, image, category, createdBy } = req.body;
     
     // Validate required fields
     if (!name || !price || !category) {
@@ -62,6 +62,9 @@ exports.create = async (req, res) => {
       name,
       description,
       price,
+      cost,
+      stock,
+      unit,
       image,
       category,
       createdBy
@@ -78,11 +81,11 @@ exports.create = async (req, res) => {
 // Update product
 exports.update = async (req, res) => {
   try {
-    const { name, description, price, image, category } = req.body;
+    const { name, description, price, cost, stock, unit, image, category } = req.body;
     
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { name, description, price, image, category },
+      { name, description, price, cost, stock, unit, image, category },
       { new: true, runValidators: true }
     );
     
